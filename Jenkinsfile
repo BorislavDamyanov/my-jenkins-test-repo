@@ -1,28 +1,37 @@
 //create a pipeline job for maven project which will create a Docker image and push it to Docker Hub repository.
 pipeline {
     agent any
+    environment {
+        dockerHome = tool 'myDocker'
+        mavenHome = tool 'myMaven'
+        PATH = "${dockerHome}/bin:${mavenHome}/bin:${PATH}"
+    }
     stages {
-        stage('Build') {
-            steps {
-                script {
-                    def mvnHome = tool 'M3'
-                    def mvnCMD = "${mvnHome}/bin/mvn"
-                    sh "${mvnCMD} clean package"
+         stage('Checkout') {
+                steps {
+                   sh 'docker --version'
+                   sh 'mvn --version'
                 }
+            }
+
+        stage('Compile') {
+            steps {
+                sh "mvn clean compile"
             }
         }
         stage('Docker Build') {
             steps {
                 script {
-                    docker.build("maven-docker-image:${env.BUILD_NUMBER}")
+                   dockerImage = docker.build("boris1030/my-jenkins-test-repo:${env.BUILD_NUMBER}")
                 }
             }
         }
         stage('Docker Push') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
-                        docker.image("maven-docker-image:${env.BUILD_NUMBER}").push()
+                    docker.withRegistry('', 'dockerhub') {
+                        dockerImage.push();
+                        dockerImage.push("latest");
                     }
                 }
             }
